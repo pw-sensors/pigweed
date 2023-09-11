@@ -1,4 +1,4 @@
-# Copyright 2021 The Pigweed Authors
+# Copyright 2023 The Pigweed Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -14,14 +14,17 @@
 
 include($ENV{PW_ROOT}/pw_build/pigweed.cmake)
 
-pw_add_library(pw_interrupt_zephyr.context INTERFACE
+pw_add_library(pw_sensor_zephyr.backend STATIC
   HEADERS
-    public/pw_interrupt_zephyr/context_inline.h
-    public_overrides/pw_interrupt_backend/context_inline.h
+    public/pw_sensor_zephyr/sensor.h
   PUBLIC_INCLUDES
     public
-    public_overrides
+  SOURCES
+    sensor.cc
   PUBLIC_DEPS
-    pw_interrupt.context.facade
+    pw_sensor
+  PRIVATE_DEPS
+    zephyr_interface
 )
-pw_zephyrize_libraries_ifdef(CONFIG_PIGWEED_INTERRUPT_CONTEXT pw_interrupt_zephyr.context)
+
+add_dependencies(pw_sensor_zephyr.backend offsets_h)

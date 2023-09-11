@@ -87,6 +87,8 @@ pw_router
 pw_rpc
 pw_rpc_transport
 pw_rust
+pw_sensor
+pw_sensor_zephyr
 pw_snapshot
 pw_software_update
 pw_span
