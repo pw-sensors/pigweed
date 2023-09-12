@@ -33,7 +33,6 @@ class Chunk;
 namespace internal {
 
 PW_PACKED(struct) ChunkHeader {
-  pw::allocator::FreeListHeapBuffer<>* heap;
   uint8_t refcount;
 };
 
@@ -41,12 +40,12 @@ class ChunkList {
  public:
   ChunkList() : chunks_(pw::span<Chunk>()) {}
   static Result<ChunkList> Allocate(size_t num_chunks);
-  ChunkList(ChunkList&& other) noexcept;
-  ChunkList& operator=(ChunkList&& other) noexcept;
+  ChunkList(ChunkList &&other) noexcept;
+  ChunkList &operator=(ChunkList &&other) noexcept;
   ~ChunkList();
 
-  Chunk& operator[](size_t index);
-  const Chunk& operator[](size_t index) const;
+  Chunk &operator[](size_t index);
+  const Chunk &operator[](size_t index) const;
   size_t size() const { return chunks_.size(); }
   pw::span<Chunk> span() { return chunks_; }
   pw::span<const Chunk> span() const { return chunks_; }
@@ -65,13 +64,14 @@ class ChunkList {
 /// so must not be destroyed within ISR context.
 class Chunk {
  public:
-  Chunk() : header_(nullptr), data_() {}
-  Chunk(Chunk&& other) noexcept : header_(other.header_), data_(other.data_) {
+  Chunk() : allocator_(nullptr), header_(nullptr), data_() {}
+  Chunk(Chunk &&other) noexcept: allocator_(other.allocator_), header_(other.header_), data_(other.data_) {
     other.header_ = nullptr;
     other.data_ = ByteSpan();
   }
-  Chunk& operator=(Chunk&& other) {
+  Chunk &operator=(Chunk &&other) {
     Release();
+    allocator_ = other.allocator_;
     header_ = other.header_;
     data_ = other.data_;
     other.header_ = nullptr;
@@ -79,8 +79,8 @@ class Chunk {
     return *this;
   }
   ~Chunk() { Release(); }
-  std::byte* data() { return data_.data(); }
-  const std::byte* data() const { return data_.data(); }
+  std::byte *data() { return data_.data(); }
+  const std::byte *data() const { return data_.data(); }
   ByteSpan span() { return data_; }
   ConstByteSpan span() const { return data_; }
   size_t size() const { return data_.size(); }
@@ -116,7 +116,8 @@ class Chunk {
   void Truncate(size_t len) { Shrink(span().first(len)); }
 
  private:
-  Chunk(internal::ChunkHeader* header_, ByteSpan data);
+  Chunk(
+      pw::allocator::Allocator *allocator, ByteSpan data, internal::ChunkHeader *header_ = nullptr);
 
   /// Resizes the portion of the data that this handle refers to.
   ///
@@ -124,8 +125,10 @@ class Chunk {
   /// Does not modify the underlying data.
   void Shrink(pw::ByteSpan new_span);
 
+  template<bool>
   friend class ChunkPool;
-  internal::ChunkHeader* header_;
+  pw::allocator::Allocator *allocator_;
+  internal::ChunkHeader *header_;
   ByteSpan data_;
 };
 
@@ -188,9 +191,10 @@ class BufferRef {
   internal::ChunkList chunks_;
 };
 
+template<bool use_headers = true>
 class ChunkPool {
  public:
-  ChunkPool(ByteSpan memory) : heap_(memory) {}
+  ChunkPool(pw::allocator::Allocator *allocator) : allocator_(allocator) {}
   Result<Chunk> GetContiguousBuffer(size_t size) {
     return GetContiguousBuffer(size, size);
   }
@@ -226,7 +230,7 @@ class ChunkPool {
   // };
 
  private:
-  pw::allocator::FreeListHeapBuffer<> heap_;
+  pw::allocator::Allocator *allocator_;
 };
 
 }  // namespace pw::splitbuf

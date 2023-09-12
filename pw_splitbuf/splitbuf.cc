@@ -12,6 +12,7 @@
 // License for the specific language governing permissions and limitations under
 // the License.
 
+#include <mutex>
 #include "pw_splitbuf/splitbuf.h"
 
 #include "pw_assert/check.h"
@@ -73,15 +74,15 @@ ChunkList::~ChunkList() { Release(); }
 
 }  // namespace internal
 
-Chunk::Chunk(internal::ChunkHeader* header, ByteSpan data)
-    : header_(header), data_(data) {}
+Chunk::Chunk(pw::allocator::Allocator *allocator, ByteSpan data, internal::ChunkHeader* header)
+    : allocator_(allocator), header_(header), data_(data) {}
 
 Chunk Chunk::Clone() {
   {
     std::lock_guard lock(chunk_lock);
     header_->refcount++;
   }
-  return Chunk(header_, data_);
+  return Chunk(allocator_, data_, header_);
 }
 
 void Chunk::Release() {
@@ -93,7 +94,7 @@ void Chunk::Release() {
   std::lock_guard lock(chunk_lock);
   header_->refcount--;
   if (header_->refcount == 0) {
-    header_->heap->Free(static_cast<void*>(header_));
+    allocator_->Free(static_cast<void*>(header_));
   }
 }
 
@@ -271,29 +272,32 @@ BufferRef::Index BufferRef::IndexAt(size_t position) const {
   return Index{chunk_i, 0};
 }
 
+template<bool use_headers>
 Result<Chunk> ChunkPool::GetContiguousBuffer(size_t min_size,
                                              size_t preferred_size) {
   size_t actual_size;
   void* allocation =
-      heap_.Allocate(preferred_size + sizeof(internal::ChunkHeader));
+      allocator_->Allocate(preferred_size + sizeof(internal::ChunkHeader));
   if (allocation != nullptr) {
     actual_size = preferred_size;
   } else {
     // FIXME: do something smarter when this is unbundled from `FreeListHeap`.
-    allocation = heap_.Allocate(min_size + sizeof(internal::ChunkHeader));
+    allocation = allocator_->Allocate(min_size + sizeof(internal::ChunkHeader));
     if (allocation == nullptr) {
       return pw::Status::ResourceExhausted();
     }
     actual_size = min_size;
   }
 
-  auto header = static_cast<internal::ChunkHeader*>(allocation);
-  header->heap = &heap_;
-  header->refcount = 1;
+  internal::ChunkHeader *header = nullptr;
+  if (std::is_enabled<use_headers>) {
+    header = static_cast<internal::ChunkHeader*>(allocation);
+    header->refcount = 1;
+  }
   auto span = ByteSpan(
-      static_cast<std::byte*>(allocation) + sizeof(internal::ChunkHeader),
+      static_cast<std::byte*>(allocation) + (header == nullptr ? 0 : sizeof(internal::ChunkHeader)),
       actual_size);
-  return Chunk(header, span);
+  return Chunk(allocator_, span, header);
 }
 
 }  // namespace pw::splitbuf

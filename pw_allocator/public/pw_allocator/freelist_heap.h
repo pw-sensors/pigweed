@@ -16,13 +16,14 @@
 
 #include <cstddef>
 
+#include "pw_allocator/allocator.h"
 #include "pw_allocator/block.h"
 #include "pw_allocator/freelist.h"
 #include "pw_span/span.h"
 
 namespace pw::allocator {
 
-class FreeListHeap {
+class FreeListHeap : public Allocator {
  public:
   template <size_t kNumBuckets>
   friend class FreeListHeapBuffer;
@@ -36,10 +37,10 @@ class FreeListHeap {
   };
   FreeListHeap(span<std::byte> region, FreeList& freelist);
 
-  void* Allocate(size_t size);
-  void Free(void* ptr);
-  void* Realloc(void* ptr, size_t size);
-  void* Calloc(size_t num, size_t size);
+  void* Allocate(size_t size) override;
+  void Free(void* ptr) override;
+  void* Realloc(void* ptr, size_t size) override;
+  void* Calloc(size_t num, size_t size) override;
 
   void LogHeapStats();
 
@@ -56,7 +57,7 @@ class FreeListHeap {
 };
 
 template <size_t kNumBuckets = 6>
-class FreeListHeapBuffer {
+class FreeListHeapBuffer : public Allocator {
  public:
   static constexpr std::array<size_t, kNumBuckets> defaultBuckets{
       16, 32, 64, 128, 256, 512};
@@ -64,10 +65,10 @@ class FreeListHeapBuffer {
   FreeListHeapBuffer(span<std::byte> region)
       : freelist_(defaultBuckets), heap_(region, freelist_) {}
 
-  void* Allocate(size_t size) { return heap_.Allocate(size); }
-  void Free(void* ptr) { heap_.Free(ptr); }
-  void* Realloc(void* ptr, size_t size) { return heap_.Realloc(ptr, size); }
-  void* Calloc(size_t num, size_t size) { return heap_.Calloc(num, size); }
+  void* Allocate(size_t size) override { return heap_.Allocate(size); }
+  void Free(void* ptr) override { heap_.Free(ptr); }
+  void* Realloc(void* ptr, size_t size) override { return heap_.Realloc(ptr, size); }
+  void* Calloc(size_t num, size_t size) override { return heap_.Calloc(num, size); }
 
   const FreeListHeap::HeapStats& heap_stats() const {
     return heap_.heap_stats_;
