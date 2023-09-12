@@ -13,27 +13,43 @@
 # the License.
 
 include($ENV{PW_ROOT}/pw_build/pigweed.cmake)
+include($ENV{PW_ROOT}/pw_async/backend.cmake)
 
-pw_add_library(pw_sensor_zephyr.backend STATIC
+pw_add_library(pw_async.types INTERFACE
   HEADERS
-    public/pw_sensor_zephyr/decoder.h
-    public/pw_sensor_zephyr/sensor.h
-    public/pw_sensor_zephyr/sensor_native.h
-    public/pw_sensor_zephyr/utils.h
-    public_overrides/pw_sensor_backend/sensor_native.h
+    public/pw_async/context.h
+    public/pw_async/task_function.h
   PUBLIC_INCLUDES
     public
-    public_overrides
-  SOURCES
-    decoder.cc
-    sensor.cc
-    utils.cc
   PUBLIC_DEPS
-    pw_sensor.facade
-    pw_bytes
-    pw_allocator_zephyr.sys_mem_block
-  PRIVATE_DEPS
-    zephyr_interface
+    pw_function
+    pw_status
 )
 
-add_dependencies(pw_sensor_zephyr.backend offsets_h)
+pw_add_facade(pw_async.task INTERFACE
+  BACKEND
+    pw_async.task_BACKEND
+  HEADERS
+    public/pw_async/task.h
+  PUBLIC_INCLUDES
+    public
+  PUBLIC_DEPS
+    pw_async.types
+    pw_function
+    pw_status
+)
+
+pw_add_facade(pw_async.dispatcher INTERFACE
+  BACKEND
+    pw_async.dispatcher_BACKEND
+  HEADERS
+    public/pw_async/dispatcher.h
+    public/pw_async/function_dispatcher.h
+  PUBLIC_INCLUDES
+    public
+  PUBLIC_DEPS
+    pw_async.types
+    pw_chrono.system_clock
+    pw_function
+    pw_status
+)

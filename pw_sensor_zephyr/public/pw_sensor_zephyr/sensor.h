@@ -14,29 +14,38 @@
 
 #pragma once
 
-#include "pw_sensor/sensor.h"
-
 #include <zephyr/device.h>
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/rtio/rtio.h>
 
+#include "pw_containers/intrusive_list.h"
+#include "pw_sensor_zephyr/decoder.h"
+#include "pw_sensor/sensor.h"
+
 namespace pw::sensor::zephyr {
 
-class ZephyrSensor : public Sensor {
+class ZephyrSensor : public pw::sensor::Sensor {
  public:
-  ZephyrSensor(const struct device* dev);
+  friend class Request;
+
+  ZephyrSensor(const struct device* dev, const struct sensor_decoder_api *decoder_api = nullptr);
   ~ZephyrSensor() = default;
 
-  pw::Status SetConfiguration(const Configuration &config);
+  pw::Status SetConfiguration(const Configuration& config);
   pw::Result<Configuration> GetConfiguration();
 
-  pw::Status Read(pw::span<SensorType> types);
+  pw::sensor::SensorFuture Read(SensorContext& context,
+                                pw::span<SensorType> types) override;
+
+  pw::sensor::Decoder& GetDecoder() { return decoder_; }
+
  protected:
-  const struct device *device_;
+  const struct device* device_;
   enum sensor_channel read_channels_[1];
   struct sensor_read_config read_config_;
   struct rtio_iodev iodev_;
   Configuration configuration_;
+  Decoder decoder_;
 };
 
 }  // namespace pw::sensor::zephyr

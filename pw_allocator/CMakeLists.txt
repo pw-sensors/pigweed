@@ -43,6 +43,16 @@ pw_add_library(pw_allocator.allocator_metric_proxy STATIC
     allocator_metric_proxy.cc
 )
 
+pw_add_library(pw_allocator.experimental INTERFACE
+  HEADERS
+    public/pw_allocator/experimental/allocator.h
+  PUBLIC_INCLUDES
+    public
+  PUBLIC_DEPS
+    pw_bytes
+    pw_result
+)
+
 pw_add_library(pw_allocator.block STATIC
   HEADERS
     public/pw_allocator/block.h

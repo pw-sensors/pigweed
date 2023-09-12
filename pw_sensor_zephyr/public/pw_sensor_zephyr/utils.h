@@ -11,23 +11,15 @@
 // WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 // License for the specific language governing permissions and limitations under
 // the License.
+
 #pragma once
 
-#include <pw_sync/binary_semaphore.h>
+#include <zephyr/drivers/sensor.h>
 
-#include "pw_chrono/system_clock.h"
-#include "pw_sync/timed_thread_notification.h"
+#include "pw_sensor/types.h"
 
-namespace pw::sync {
+namespace pw::sensor::zephyr {
 
-inline bool TimedThreadNotification::try_acquire_for(
-    chrono::SystemClock::duration timeout) {
-  return native_handle().try_acquire_for(timeout);
-}
+enum sensor_channel SensorTypeToChannel(pw::sensor::SensorType type);
 
-inline bool TimedThreadNotification::try_acquire_until(
-    chrono::SystemClock::time_point deadline) {
-  return try_acquire_for(deadline - chrono::SystemClock::now());
-}
-
-}  // namespace pw::sync
+}  // namespace pw::sensor::zephyr

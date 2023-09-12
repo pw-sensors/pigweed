@@ -14,11 +14,74 @@
 
 #pragma once
 
+#include "pw_async/dispatcher.h"
+#include "pw_bytes/span.h"
+#include "pw_containers/intrusive_list.h"
 #include "pw_sensor/configuration.h"
+#include "pw_sensor/poll.h"
 #include "pw_sensor/types.h"
+#include "pw_sensor/decoder.h"
+#include "pw_sensor_backend/sensor_native.h"
 #include "pw_span/span.h"
 
 namespace pw::sensor {
+
+class SensorContext;
+
+class SensorFuture : public pw::IntrusiveList<SensorFuture>::Item {
+ public:
+  SensorFuture(SensorContext* ctx, std::uintptr_t handle)
+      : ctx_(ctx),
+        value_(std::in_place_type<async::Pending>),
+        handle_(handle) {}
+  SensorFuture(pw::Result<pw::allocator::experimental::Block>&& value) : ctx_(nullptr), value_(std::move(value)) {}
+  SensorFuture(SensorFuture&) = delete;
+  SensorFuture(SensorFuture&& other)
+      : ctx_(other.ctx_),
+        value_(std::move(other.value_)),
+        handle_(other.handle_),
+        waker_(other.waker_) {
+    other.ctx_ = nullptr;
+    other.value_ = pw::Status::Cancelled();
+  }
+
+  bool IsWaitingOn(SensorContext* ctx, std::uintptr_t handle) {
+    return value_.is_a() && ctx_ == ctx && handle_ == handle;
+  }
+
+  void SetResult(pw::Result<pw::allocator::experimental::Block>&& result) {
+      PW_ASSERT(value_.is_a());
+      value_ = {std::move(result)};
+      waker_.Wake();
+  }
+
+  pw::async::Poll<pw::Result<pw::allocator::experimental::Block>> Poll(pw::async::Waker& waker);
+
+ private:
+  SensorContext* ctx_;
+  bivariant<async::Pending, pw::Result<pw::allocator::experimental::Block>> value_;
+  std::uintptr_t handle_;
+
+  pw::async::Waker waker_;
+};
+
+class SensorContext {
+ public:
+  SensorContext(backend::NativeSensorContext native_type)
+      : native_type_(native_type) {}
+  void AddFuture(SensorFuture& future) { pending_requests_.push_back(future); }
+  pw::Status NotifyComplete(backend::NativeSensorFutureResultType result);
+  std::uintptr_t NextRequestId() { return next_request_id_++; }
+  inline backend::NativeSensorContext &native_type() {
+    return native_type_;
+  }
+
+ protected:
+  backend::NativeSensorContext native_type_;
+  std::uintptr_t next_request_id_ = 0;
+
+  pw::IntrusiveList<SensorFuture> pending_requests_;
+};
 
 class Sensor {
  public:
@@ -27,10 +90,13 @@ class Sensor {
   Sensor(const Sensor&) = delete;
   Sensor& operator=(const Sensor&) = delete;
 
-  virtual pw::Status SetConfiguration(const Configuration &cofig) = 0;
+  virtual pw::Status SetConfiguration(const Configuration& cofig) = 0;
   virtual pw::Result<Configuration> GetConfiguration() = 0;
 
-  virtual pw::Status Read(pw::span<SensorType> types) = 0;
+  virtual SensorFuture Read(SensorContext& context,
+                            pw::span<SensorType> types) = 0;
+
+  virtual Decoder& GetDecoder() = 0;
 };
 
 }  // namespace pw::sensor

@@ -703,6 +703,7 @@ function(pw_add_backend_variable NAME)
             "must end in _BACKEND")
   endif()
 
+  message("Setting '${NAME}' to '${arg_DEFAULT_BACKEND}'")
   set("${NAME}" "${arg_DEFAULT_BACKEND}" CACHE STRING
       "${NAME} backend variable for a facade")
 endfunction()
@@ -722,6 +723,7 @@ function(pw_set_backend NAME BACKEND)
             "import to that file.")
   endif()
 
+  message("Setting ${NAME} to ${BACKEND}")
   set("${NAME}" "${BACKEND}" CACHE STRING "backend variable for a facade" FORCE)
 endfunction(pw_set_backend)
 

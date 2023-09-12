@@ -11,23 +11,25 @@
 // WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 // License for the specific language governing permissions and limitations under
 // the License.
+
 #pragma once
 
-#include <pw_sync/binary_semaphore.h>
+#include <zephyr/rtio/rtio.h>
 
-#include "pw_chrono/system_clock.h"
-#include "pw_sync/timed_thread_notification.h"
+#include "pw_allocator_zephyr/sys_mem_block_allocator.h"
 
-namespace pw::sync {
+namespace pw::sensor::backend {
 
-inline bool TimedThreadNotification::try_acquire_for(
-    chrono::SystemClock::duration timeout) {
-  return native_handle().try_acquire_for(timeout);
-}
+using NativeSensorFutureHandleType = struct rtio_sqe *;
+using NativeSensorFutureResultType = struct rtio_cqe *;
 
-inline bool TimedThreadNotification::try_acquire_until(
-    chrono::SystemClock::time_point deadline) {
-  return try_acquire_for(deadline - chrono::SystemClock::now());
-}
+struct NativeSensorContext {
+  struct rtio *r_;
+  pw::allocator::zephyr::ZephyrAllocator *allocator_;
+};
 
-}  // namespace pw::sync
+struct NativeDecoderContext {
+  uint32_t frame_iterator;
+};
+
+}  // namespace pw::sensor::backend

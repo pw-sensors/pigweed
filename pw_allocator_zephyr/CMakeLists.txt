@@ -14,26 +14,13 @@
 
 include($ENV{PW_ROOT}/pw_build/pigweed.cmake)
 
-pw_add_library(pw_sensor_zephyr.backend STATIC
+pw_add_library(pw_allocator_zephyr.sys_mem_block INTERFACE
   HEADERS
-    public/pw_sensor_zephyr/decoder.h
-    public/pw_sensor_zephyr/sensor.h
-    public/pw_sensor_zephyr/sensor_native.h
-    public/pw_sensor_zephyr/utils.h
-    public_overrides/pw_sensor_backend/sensor_native.h
+    public/pw_allocator_zephyr/sys_mem_block_allocator.h
   PUBLIC_INCLUDES
     public
-    public_overrides
-  SOURCES
-    decoder.cc
-    sensor.cc
-    utils.cc
   PUBLIC_DEPS
-    pw_sensor.facade
-    pw_bytes
-    pw_allocator_zephyr.sys_mem_block
-  PRIVATE_DEPS
+    pw_allocator.experimental
+    pw_allocator.allocator
     zephyr_interface
 )
-
-add_dependencies(pw_sensor_zephyr.backend offsets_h)

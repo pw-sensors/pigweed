@@ -15,19 +15,33 @@
 include($ENV{PW_ROOT}/pw_build/pigweed.cmake)
 include($ENV{PW_ROOT}/pw_sensor/backend.cmake)
 
+pw_add_library(pw_sensor.async INTERFACE
+  HEADERS
+    public/pw_sensor/bivariant.h
+    public/pw_sensor/poll.h
+  PUBLIC_INCLUDES
+    public
+  PUBLIC_DEPS
+    pw_async.dispatcher
+    pw_async.task
+)
+
 pw_add_facade(pw_sensor INTERFACE
   BACKEND
     pw_sensor_BACKEND
   HEADERS
     public/pw_sensor/attribute.h
     public/pw_sensor/configuration.h
+    public/pw_sensor/decoder.h
     public/pw_sensor/sensor.h
     public/pw_sensor/types.h
   PUBLIC_INCLUDES
     public
   PUBLIC_DEPS
+    pw_sensor.async
     pw_containers
     pw_result
     pw_span
+    pw_bytes
     pw_status
 )

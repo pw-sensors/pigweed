@@ -14,26 +14,30 @@
 
 include($ENV{PW_ROOT}/pw_build/pigweed.cmake)
 
-pw_add_library(pw_sensor_zephyr.backend STATIC
+pw_add_library(pw_async_basic.task_backend INTERFACE
   HEADERS
-    public/pw_sensor_zephyr/decoder.h
-    public/pw_sensor_zephyr/sensor.h
-    public/pw_sensor_zephyr/sensor_native.h
-    public/pw_sensor_zephyr/utils.h
-    public_overrides/pw_sensor_backend/sensor_native.h
+    public/pw_async_basic/task.h
+    public_overrides/pw_async_backend/task.h
   PUBLIC_INCLUDES
     public
     public_overrides
-  SOURCES
-    decoder.cc
-    sensor.cc
-    utils.cc
   PUBLIC_DEPS
-    pw_sensor.facade
-    pw_bytes
-    pw_allocator_zephyr.sys_mem_block
-  PRIVATE_DEPS
-    zephyr_interface
+    pw_async.task.facade
+    pw_containers.intrusive_list
 )
 
-add_dependencies(pw_sensor_zephyr.backend offsets_h)
+pw_add_library(pw_async_basic.dispatcher_backend STATIC
+  HEADERS
+    public/pw_async_basic/dispatcher.h
+  SOURCES
+    dispatcher.cc
+  PUBLIC_INCLUDES
+    public
+  PUBLIC_DEPS
+    pw_async_basic.task_backend
+    pw_async.dispatcher.facade
+    pw_containers.intrusive_list
+    pw_sync.interrupt_spin_lock
+    pw_sync.timed_thread_notification
+    pw_thread.thread_core
+)
