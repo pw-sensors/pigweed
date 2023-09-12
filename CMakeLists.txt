@@ -69,6 +69,7 @@ if(CONFIG_ZEPHYR_PIGWEED_MODULE)
 endif()
 
 add_subdirectory(pw_allocator EXCLUDE_FROM_ALL)
+add_subdirectory(pw_allocator_zephyr EXCLUDE_FROM_ALL)
 add_subdirectory(pw_assert EXCLUDE_FROM_ALL)
 add_subdirectory(pw_assert_basic EXCLUDE_FROM_ALL)
 add_subdirectory(pw_assert_log EXCLUDE_FROM_ALL)

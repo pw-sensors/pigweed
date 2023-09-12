@@ -14,6 +14,13 @@
 
 include($ENV{PW_ROOT}/pw_build/pigweed.cmake)
 
+pw_add_library(pw_allocator.core INTERFACE
+  HEADERS
+    public/pw_allocator/allocator.h
+  PUBLIC_INCLUDES
+    public
+)
+
 pw_add_library(pw_allocator.block STATIC
   HEADERS
     public/pw_allocator/block.h
@@ -47,6 +54,7 @@ pw_add_library(pw_allocator.freelist_heap STATIC
     public
   PUBLIC_DEPS
     pw_allocator.block
+    pw_allocator.core
     pw_allocator.freelist
   PRIVATE_DEPS
     pw_assert
