@@ -22,6 +22,11 @@ namespace pw::sensor::backend {
 
 using NativeSensorFutureResultType = struct rtio_cqe *;
 
+class DecoderContext {
+ public:
+  uint32_t frame_iterator = 0;
+};
+
 struct NativeSensorContext {
   struct rtio *r_;
   pw::allocator::zephyr::ZephyrAllocator *allocator_;

@@ -110,7 +110,7 @@ pw::sensor::SensorFuture ZephyrSensor::Read(pw::sensor::SensorContext& ctx,
 
 }  // namespace pw::sensor::zephyr
 
-static pw::Result<pw::allocator::experimental::Block> ProcessCQE(
+static pw::Result<pw::sensor::Block> ProcessCQE(
     pw::sensor::backend::NativeSensorContext& ctx, struct rtio_cqe* cqe) {
   if (cqe->result < 0) {
     rtio_cqe_release(ctx.r_, cqe);
@@ -126,7 +126,7 @@ static pw::Result<pw::allocator::experimental::Block> ProcessCQE(
     return pw::Status::Internal();
   }
 
-  return pw::allocator::experimental::Block(
+  return pw::sensor::Block(
       ctx.allocator_, pw::ByteSpan({(std::byte*)buffer, buffer_len}));
 }
 
@@ -143,7 +143,7 @@ pw::Status pw::sensor::SensorContext::NotifyComplete(
   return pw::Status::Unavailable();
 }
 
-pw::async::Poll<pw::Result<pw::allocator::experimental::Block>>
+pw::async::Poll<pw::Result<pw::sensor::Block>>
 pw::sensor::SensorFuture::Poll(pw::async::Waker& waker) {
   if (value_.is_b()) {
     ctx_ = nullptr;
@@ -153,7 +153,7 @@ pw::sensor::SensorFuture::Poll(pw::async::Waker& waker) {
   // TODO this should loop until returning nullptr or matching handle_
   struct rtio_cqe* cqe;
   bool found = false;
-  pw::Result<pw::allocator::experimental::Block> result(pw::Status::Unknown());
+  pw::Result<pw::sensor::Block> result(pw::Status::Unknown());
 
   while ((cqe = rtio_cqe_consume(ctx_->native_type().r_)) != nullptr) {
     if ((std::uintptr_t)cqe->userdata != handle_) {

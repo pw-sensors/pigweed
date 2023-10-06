@@ -21,6 +21,7 @@
 #include "pw_sensor/poll.h"
 #include "pw_sensor/types.h"
 #include "pw_sensor/decoder.h"
+#include "pw_sensor/mem_block.h"
 #include "pw_sensor_backend/sensor_native.h"
 #include "pw_span/span.h"
 
@@ -53,20 +54,20 @@ class SensorFuture : public pw::IntrusiveList<SensorFuture>::Item {
     return value_.is_a() && ctx_ == ctx && handle_ == handle;
   }
 
-  void SetResult(pw::Result<pw::allocator::experimental::Block>&& result) {
+  void SetResult(pw::Result<pw::sensor::Block>&& result) {
       PW_ASSERT(value_.is_a());
       value_ = {std::move(result)};
       waker_.Wake();
   }
 
-  pw::async::Poll<pw::Result<pw::allocator::experimental::Block>> Poll(pw::async::Waker& waker);
+  pw::async::Poll<pw::Result<pw::sensor::Block>> Poll(pw::async::Waker& waker);
 
   Sensor* sensor() { return sensor_; }
 
  private:
   SensorContext* ctx_;
   Sensor *sensor_;
-  bivariant<async::Pending, pw::Result<pw::allocator::experimental::Block>> value_;
+  bivariant<async::Pending, pw::Result<pw::sensor::Block>> value_;
   std::uintptr_t handle_;
 
   pw::async::Waker waker_;
@@ -103,7 +104,7 @@ class Sensor {
   virtual SensorFuture Read(SensorContext& context,
                             pw::span<SensorType> types) = 0;
 
-  virtual Decoder& GetDecoder() = 0;
+  virtual Decoder* GetDecoder() = 0;
 };
 
 }  // namespace pw::sensor

@@ -23,27 +23,24 @@ namespace pw::sensor::zephyr {
 class Decoder : public pw::sensor::Decoder {
  public:
   Decoder(const struct sensor_decoder_api* api = nullptr)
-      : api_(api), frame_iterator(0) {}
+      : api_(api) {}
   ~Decoder() = default;
 
-  pw::Status Reset(pw::ConstByteSpan buffer) override {
-    PW_ASSERT_OK(pw::sensor::Decoder::Reset(buffer));
-    frame_iterator = 0;
-    return pw::OkStatus();
-  }
+  pw::Result<size_t> GetFrameCount(DecoderContext& ctx,
+                                   SensorType type,
+                                   size_t type_index) override;
 
-  pw::Result<size_t> GetFrameCount(SensorType type, size_t type_index) override;
+  pw::Result<SizeInfo> GetSizeInfo(DecoderContext& ctx,
+                                   SensorType type) override;
 
-  pw::Result<SizeInfo> GetSizeInfo(SensorType type) override;
-
-  pw::Result<size_t> Decode(SensorType type,
+  pw::Result<size_t> Decode(DecoderContext& ctx,
+                            SensorType type,
                             size_t type_index,
                             size_t max_count,
                             pw::ByteSpan out) override;
 
  private:
   const struct sensor_decoder_api* api_;
-  uint32_t frame_iterator;
 };
 
 }  // namespace pw::sensor::zephyr

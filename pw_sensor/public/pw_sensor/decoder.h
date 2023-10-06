@@ -29,26 +29,30 @@ struct SizeInfo {
   size_t frame_size;
 };
 
+class DecoderContext : public backend::DecoderContext {
+ public:
+  DecoderContext(pw::ConstByteSpan buffer)
+      : backend::DecoderContext(), buffer(buffer) {}
+  pw::ConstByteSpan buffer;
+};
+
 class Decoder {
  public:
   Decoder() = default;
   virtual ~Decoder() = default;
 
-  virtual pw::Status Reset(pw::ConstByteSpan buffer) {
-    buffer_ = buffer;
-    return pw::OkStatus();
-  }
-  virtual pw::Result<size_t> GetFrameCount(SensorType type, size_t type_index) = 0;
+  virtual pw::Result<size_t> GetFrameCount(DecoderContext& ctx,
+                                           SensorType type,
+                                           size_t type_index) = 0;
 
-  virtual pw::Result<SizeInfo> GetSizeInfo(SensorType type) = 0;
+  virtual pw::Result<SizeInfo> GetSizeInfo(DecoderContext& ctx,
+                                           SensorType type) = 0;
 
-  virtual pw::Result<size_t> Decode(SensorType type,
-                    size_t type_index,
-                    size_t max_count,
-                    pw::ByteSpan out) = 0;
-
- protected:
-  pw::ConstByteSpan buffer_;
+  virtual pw::Result<size_t> Decode(DecoderContext& ctx,
+                                    SensorType type,
+                                    size_t type_index,
+                                    size_t max_count,
+                                    pw::ByteSpan out) = 0;
 };
 
 }  // namespace pw::sensor

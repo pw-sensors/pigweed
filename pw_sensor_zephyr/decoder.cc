@@ -16,14 +16,14 @@
 
 #include "pw_sensor_zephyr/utils.h"
 
-pw::Result<size_t> pw::sensor::zephyr::Decoder::GetFrameCount(
+pw::Result<size_t> pw::sensor::zephyr::Decoder::GetFrameCount(pw::sensor::DecoderContext& ctx,
     SensorType type, size_t type_index) {
   if (api_->get_frame_count == nullptr) {
     return pw::Status::Unimplemented();
   }
 
   uint16_t frame_count;
-  int rc = api_->get_frame_count((const uint8_t*)buffer_.data(),
+  int rc = api_->get_frame_count((const uint8_t*)ctx.buffer.data(),
                                  SensorTypeToChannel(type),
                                  type_index,
                                  &frame_count);
@@ -33,7 +33,7 @@ pw::Result<size_t> pw::sensor::zephyr::Decoder::GetFrameCount(
   return {static_cast<size_t>(frame_count)};
 }
 
-pw::Result<pw::sensor::SizeInfo> pw::sensor::zephyr::Decoder::GetSizeInfo(
+pw::Result<pw::sensor::SizeInfo> pw::sensor::zephyr::Decoder::GetSizeInfo(DecoderContext& ,
     pw::sensor::SensorType type) {
   if (api_->get_size_info == nullptr) {
     return pw::Status::Unimplemented();
@@ -48,24 +48,22 @@ pw::Result<pw::sensor::SizeInfo> pw::sensor::zephyr::Decoder::GetSizeInfo(
   return size_info;
 }
 
-pw::Result<size_t> pw::sensor::zephyr::Decoder::Decode(
+pw::Result<size_t> pw::sensor::zephyr::Decoder::Decode(DecoderContext& ctx,
     pw::sensor::SensorType type,
     size_t type_index,
     size_t max_count,
     pw::ByteSpan out) {
   if (api_->decode == nullptr) {
-    printk("'decode' is not implemented\n");
     return pw::Status::Unimplemented();
   }
 
-  printk("Calling decode with frame_iterator=%" PRIu32 "\n", frame_iterator);
-  int rc = api_->decode((const uint8_t*)buffer_.data(),
+  int rc = api_->decode((const uint8_t*)ctx.buffer.data(),
                         SensorTypeToChannel(type),
                         type_index,
-                        &frame_iterator,
+                        &ctx.frame_iterator,
                         max_count,
                         out.data());
-  printk("rc = %d\n", rc);
+
   if (rc < 0) {
     return pw::Status::Internal();
   }

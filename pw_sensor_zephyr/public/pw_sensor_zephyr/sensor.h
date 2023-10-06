@@ -37,7 +37,7 @@ class ZephyrSensor : public pw::sensor::Sensor {
   pw::sensor::SensorFuture Read(SensorContext& context,
                                 pw::span<SensorType> types) override;
 
-  pw::sensor::Decoder& GetDecoder() { return decoder_; }
+  pw::sensor::Decoder* GetDecoder() { return &decoder_; }
 
  protected:
   const struct device* device_;
