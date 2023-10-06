@@ -26,22 +26,26 @@
 
 namespace pw::sensor {
 
+class Sensor;
 class SensorContext;
 
 class SensorFuture : public pw::IntrusiveList<SensorFuture>::Item {
  public:
-  SensorFuture(SensorContext* ctx, std::uintptr_t handle)
+  SensorFuture(SensorContext* ctx, Sensor *sensor, std::uintptr_t handle)
       : ctx_(ctx),
+        sensor_(sensor),
         value_(std::in_place_type<async::Pending>),
         handle_(handle) {}
-  SensorFuture(pw::Result<pw::allocator::experimental::Block>&& value) : ctx_(nullptr), value_(std::move(value)) {}
+  SensorFuture(pw::Status status) : ctx_(nullptr), value_(status) {}
   SensorFuture(SensorFuture&) = delete;
   SensorFuture(SensorFuture&& other)
       : ctx_(other.ctx_),
+        sensor_(other.sensor_),
         value_(std::move(other.value_)),
         handle_(other.handle_),
         waker_(other.waker_) {
     other.ctx_ = nullptr;
+    other.sensor_ = nullptr;
     other.value_ = pw::Status::Cancelled();
   }
 
@@ -57,8 +61,11 @@ class SensorFuture : public pw::IntrusiveList<SensorFuture>::Item {
 
   pw::async::Poll<pw::Result<pw::allocator::experimental::Block>> Poll(pw::async::Waker& waker);
 
+  Sensor* sensor() { return sensor_; }
+
  private:
   SensorContext* ctx_;
+  Sensor *sensor_;
   bivariant<async::Pending, pw::Result<pw::allocator::experimental::Block>> value_;
   std::uintptr_t handle_;
 

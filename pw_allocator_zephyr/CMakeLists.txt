@@ -20,7 +20,6 @@ pw_add_library(pw_allocator_zephyr.sys_mem_block INTERFACE
   PUBLIC_INCLUDES
     public
   PUBLIC_DEPS
-    pw_allocator.experimental
     pw_allocator.allocator
     zephyr_interface
 )

@@ -19,59 +19,52 @@
 #include <algorithm>
 #include <cstdint>
 
-#include "pw_allocator/experimental/allocator.h"
 #include "pw_allocator/allocator.h"
 
 namespace pw::allocator::zephyr {
 
-class ZephyrAllocator2 : public pw::allocator::Allocator {
-  void* DoAllocate(size_t size, size_t alignment) override { return nullptr; }
-  void DoDeallocate(void* ptr, size_t size, size_t alignment) override {}
-  bool DoResize(void* ptr,
-                size_t old_size,
-                size_t old_alignment,
-                size_t new_size) override {
-    return false;
-  }
-};
-
-class ZephyrAllocator : public pw::allocator::experimental::Allocator {
+class ZephyrAllocator : public pw::allocator::Allocator {
  public:
   ZephyrAllocator() = delete;
-  ZephyrAllocator(struct sys_mem_blocks* pool, uint8_t alignment)
-      : pool_(pool), alignment_(std::max<uint8_t>(1, alignment)) {}
-
-  pw::Result<pw::allocator::experimental::Block> Allocate(
-      size_t size) override {
+  ZephyrAllocator(struct sys_mem_blocks* pool) : pool_(pool) {}
+  void* DoAllocate(size_t size, size_t) override {
     const auto block_count = ComputeRequiredBlocks(size);
-
     void* out;
     if (sys_mem_blocks_alloc_contiguous(pool_, block_count, &out) != 0) {
-      return {pw::Status::ResourceExhausted()};
+      return nullptr;
     }
-
-    return {std::move(pw::allocator::experimental::Block(
-        this,
-        ByteSpan(static_cast<std::byte*>(out),
-                 block_count << pool_->info.blk_sz_shift)))};
+    return out;
   }
-
-  void Free(pw::allocator::experimental::Block& data) override {
-    sys_mem_blocks_free_contiguous(
-        pool_, data.data(), data.size() >> pool_->info.blk_sz_shift);
-  }
-
-  pw::Result<pw::allocator::experimental::Block> Claim(void* ptr, size_t size) {
+  void DoDeallocate(void* ptr, size_t size, size_t) override {
     const auto block_count = ComputeRequiredBlocks(size);
+    sys_mem_blocks_free_contiguous(pool_, ptr, block_count);
+  }
+  bool DoResize(void* ptr,
+                size_t old_size,
+                size_t,
+                size_t new_size) override {
+    const auto old_block_count = ComputeRequiredBlocks(old_size);
+    const auto new_block_count = ComputeRequiredBlocks(new_size);
 
-    if (sys_mem_blocks_is_region_free(pool_, ptr, block_count)) {
-      printk("region is free, can't claim\n");
-      return {pw::Status::Unavailable()};
+    if (new_block_count == old_block_count) {
+      return true;
     }
-    return {pw::allocator::experimental::Block(
-        this,
-        ByteSpan(static_cast<std::byte*>(ptr),
-                 block_count << pool_->info.blk_sz_shift))};
+    if (new_block_count < old_block_count) {
+      // Can free some space
+      const auto block_count = old_block_count - new_block_count;
+      ptr = static_cast<uint8_t*>(ptr) +
+            (new_block_count << pool_->info.blk_sz_shift);
+      return sys_mem_blocks_free_contiguous(pool_, ptr, block_count) == 0;
+    }
+    // Need to allocate at the tail
+    const auto block_count = new_block_count - old_block_count;
+    ptr = static_cast<uint8_t*>(ptr) +
+          (old_block_count << pool_->info.blk_sz_shift);
+    if (!sys_mem_blocks_is_region_free(pool_, ptr, block_count)) {
+      return false;
+    }
+
+    return sys_mem_blocks_get(pool_, ptr, block_count) == 0;
   }
 
  private:
@@ -84,7 +77,6 @@ class ZephyrAllocator : public pw::allocator::experimental::Allocator {
     return std::max<size_t>(block_count, 1);
   }
   struct sys_mem_blocks* pool_;
-  const uint8_t alignment_;
 };
 
 }  // namespace pw::allocator::zephyr

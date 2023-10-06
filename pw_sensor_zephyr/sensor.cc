@@ -15,14 +15,14 @@
 #define PW_LOG_MODULE_NAME "Sensor"
 #define PW_LOG_LEVEL PW_LOG_LEVEL_INFO
 
-#include "pw_sensor_zephyr/decoder.h"
 #include "pw_sensor_zephyr/sensor.h"
-#include "pw_sensor_zephyr/utils.h"
 
 #include <zephyr/drivers/sensor.h>
 
 #include "pw_bytes/span.h"
 #include "pw_log/log.h"
+#include "pw_sensor_zephyr/decoder.h"
+#include "pw_sensor_zephyr/utils.h"
 
 namespace {
 inline float SensorValueToFloat(const struct sensor_value& value) {
@@ -42,7 +42,8 @@ inline struct sensor_value FloatToSensorValue(float value) {
 
 namespace pw::sensor::zephyr {
 
-ZephyrSensor::ZephyrSensor(const struct device* dev, const struct sensor_decoder_api *decoder_api)
+ZephyrSensor::ZephyrSensor(const struct device* dev,
+                           const struct sensor_decoder_api* decoder_api)
     : device_(dev),
       read_config_({.sensor = dev,
                     .channels = read_channels_,
@@ -99,11 +100,10 @@ pw::sensor::SensorFuture ZephyrSensor::Read(pw::sensor::SensorContext& ctx,
 
   if (sensor_read(&iodev_, ctx.native_type().r_, (void*)handle) != 0) {
     // Failed to start the read
-    // TODO initialize this so it will always return an error
     return SensorFuture(pw::Status::Internal());
   }
 
-  SensorFuture future(&ctx, handle);
+  SensorFuture future(&ctx, this, handle);
   ctx.AddFuture(future);
   return future;
 }
@@ -111,7 +111,7 @@ pw::sensor::SensorFuture ZephyrSensor::Read(pw::sensor::SensorContext& ctx,
 }  // namespace pw::sensor::zephyr
 
 static pw::Result<pw::allocator::experimental::Block> ProcessCQE(
-    pw::sensor::backend::NativeSensorContext &ctx, struct rtio_cqe* cqe) {
+    pw::sensor::backend::NativeSensorContext& ctx, struct rtio_cqe* cqe) {
   if (cqe->result < 0) {
     rtio_cqe_release(ctx.r_, cqe);
     return pw::Status::Internal();
@@ -125,9 +125,9 @@ static pw::Result<pw::allocator::experimental::Block> ProcessCQE(
   if (rc != 0) {
     return pw::Status::Internal();
   }
-  auto data_block = ctx.allocator_->Claim(buffer, buffer_len);
-  PW_ASSERT(data_block.ok());
-  return std::move(data_block.value());
+
+  return pw::allocator::experimental::Block(
+      ctx.allocator_, pw::ByteSpan({(std::byte*)buffer, buffer_len}));
 }
 
 pw::Status pw::sensor::SensorContext::NotifyComplete(
