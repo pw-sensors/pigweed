@@ -158,9 +158,13 @@ pw_seed("0118") {
 }
 
 pw_seed("0119") {
-  changelist = 182673
-  title = "pw_sensor Sensor drivers and framework"
-  status = "Draft"
+  sources = [ "0119-pw-sensor.rst" ]
+  title = "pw_sensor A sensor framework"
+  status = "Open for Comments"
+  inputs = [
+    "0119-pw-sensor/high-level-view.svg",
+    "0119-pw-sensor/data-pipeline.svg",
+  ]
   author = "Yuval Peress"
 }
 
